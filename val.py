@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import segmentation_models_pytorch as smp
 from parser_config import parse_args
-import pandas as pd 
+import pandas as pd
 
 from metrics import iou_score, dice_coef, get_stats, HD
 from utils import AverageMeter
@@ -39,9 +39,8 @@ Device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 def main(val_loader, model):
     columns = ['Jaccard', 'HD', 'Dice', 'Recall']
 
-
-    # 创建一个空的DataFrame，列的值初始化为NaN  
-    ans = pd.DataFrame(columns=columns)  
+    # 创建一个空的DataFrame，列的值初始化为NaN
+    ans = pd.DataFrame(columns=columns)
     jaccard = []
     HDlist = []
     Dice = []
@@ -60,7 +59,7 @@ def main(val_loader, model):
     model = model.to(Device)
     if os.path.exists('/data/GYL/Models_info/saved_models/%s/model.pth' % config['name']):
         model.load_state_dict(torch.load('/data/GYL/Models_info/saved_models/%s/model.pth' %
-                                        config['name']))
+                                         config['name']))
     # if os.path.exists('/data/GYL/Models_info/saved_models/%s/PAST/model_fin_21.pth' % config['name']):
     #     model.load_state_dict(torch.load('/data/GYL/Models_info/saved_models/%s/PAST/model_fin_21.pth' %
     #                                     config['name']))
@@ -78,7 +77,7 @@ def main(val_loader, model):
     # for c in range(config['num_classes']):
     #     os.makedirs(os.path.join('outputs', config['name'], str(c)), exist_ok=True)
     with torch.no_grad():
-        for input, target, text_idx, organ_features, _ in tqdm(val_loader, total=len(val_loader)):
+        for input, target, text_idx, organ_features, _, _ in tqdm(val_loader, total=len(val_loader)):
 
             input = input.to(Device)
             target = target.to(Device)
@@ -86,7 +85,7 @@ def main(val_loader, model):
 
             # compute output
 
-            output = model(input, t_f=text_idx)
+            output, _ = model(input, t_f=text_idx)
             outputs = []
             for i in range(output.shape[0]):
                 a = int(organ_features[i])
@@ -144,17 +143,15 @@ def main(val_loader, model):
         fin_rc += rc[i].avg
     print('IoU: %.4f' % avg_meter.avg)
     print('jacca: %.4f' % jacca.avg)
-    print('hd: %.4f' % (fin_hd/config['num_classes']))
-    print('acc: %.4f' % (fin_acc/config['num_classes']))
-    print('rc: %.4f' % (fin_rc/config['num_classes']))
-    print('sp: %.4f' % (fin_sp/config['num_classes']))
+    print('hd: %.4f' % (fin_hd / config['num_classes']))
+    print('acc: %.4f' % (fin_acc / config['num_classes']))
+    print('rc: %.4f' % (fin_rc / config['num_classes']))
+    print('sp: %.4f' % (fin_sp / config['num_classes']))
     for j in range(0, 21, 3):
-        print(f'IoU{j}: %.4f - IoU{j+1}: %.4f - IoU{j+2}: %.4f'
-              % (avg_list[j].avg, avg_list[j+1].avg, avg_list[j+2].avg))
-
+        print(f'IoU{j}: %.4f - IoU{j + 1}: %.4f - IoU{j + 2}: %.4f'
+              % (avg_list[j].avg, avg_list[j + 1].avg, avg_list[j + 2].avg))
 
     torch.cuda.empty_cache()
-
 
 
 if __name__ == '__main__':
