@@ -1,9 +1,3 @@
-# 人工智能
-# 项目：
-# 开发人：Barry
-# 开发时间：2023-05-31  20:32
-# 开发工具：PyCharm
-
 import warnings
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # 这里输入你的GPU_id
@@ -32,6 +26,10 @@ LOSS_NAMES = losses.__all__
 Device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 LOSS_NAMES.append('BCEWithLogitsLoss')
 
+# 定义L2损失函数
+def l2_loss(output, target):
+    return torch.mean((output - target) ** 2)
+
 """
 
 指定参数：
@@ -55,23 +53,26 @@ def train(config, train_loader, model, criterion, optimizer, Device):
 
     pbar = tqdm(total=len(train_loader))
     # 加载数据集
-    for input, target, text_idx, organ_features, _ in train_loader:
+    for input, target, text_idx, organ_features, organ_ture, _ in train_loader:
 
         input = input.cuda()
         target = target.cuda()
         text_idx = text_idx.cuda()
+        organ_ture = organ_ture.cuda()
 
         # compute output
-        output = model(input, t_f=text_idx)
+        output, g_out = model(input, t_f=text_idx)
         outputs = []
         for i in range(output.shape[0]):
             a = int(organ_features[i])
             outputs.append(output[i, a, :, :])
         output = torch.stack(outputs)
         loss = criterion(output.unsqueeze(dim=1), target.unsqueeze(dim=1))
+        loss_g = l2_loss(g_out, organ_ture)
         dice = dice_coef(output, target)
         optimizer.zero_grad()
-        loss.backward()
+        loss_all = loss + loss_g
+        loss_all.backward()
         optimizer.step()
 
         avg_meters['loss'].update(loss.item(), input.size(0))
@@ -99,14 +100,14 @@ def validate(config, val_loader, model, criterion, Device):
 
     with torch.no_grad():
         pbar = tqdm(total=len(val_loader))
-        for input, target, text_idx, organ_features, _ in val_loader:
+        for input, target, text_idx, organ_features,_, _ in val_loader:
             input = input.to(Device)
             target = target.to(Device)
             text_idx = text_idx.to(Device)
 
             # compute output
 
-            output = model(input, t_f=text_idx)
+            output,_ = model(input, t_f=text_idx)
             outputs = []
             for i in range(output.shape[0]):
                 a = int(organ_features[i])
