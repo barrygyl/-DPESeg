@@ -16,10 +16,20 @@ def load_vocab(vocab_file):
             vocab[word] = idx
     return vocab
 
+
 # 将文本转换为索引列表
 def text_to_indices(text, vocab):
     indices = [vocab[word] for word in text.split() if word in vocab]
     return indices
+
+
+def apply_mask_to_color_image(img, mask):
+    # 将 mask 扩展到与 img 相同的形状
+    mask = np.expand_dims(mask, axis=0)
+
+    # 将mask为1的部分保留，其他部分置为0
+    masked_img = img * mask
+    return masked_img
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -66,7 +76,7 @@ class Dataset(torch.utils.data.Dataset):
         self.mask_dir = mask_dir
         self.img_ext = img_ext
         self.mask_ext = mask_ext
-        
+
         # 从 JSON 文件中加载字典
         with open('anatomy_dict.json', 'r') as json_file:
             self.loaded_dict = json.load(json_file)
@@ -110,4 +120,6 @@ class Dataset(torch.utils.data.Dataset):
         img = img.transpose(2, 0, 1)  # 将通道数放在前
         mask = mask.astype('float32') / 255
 
-        return img, mask, embedding_array, Organ_num, {'img_id': img_id}
+        organ_ture = apply_mask_to_color_image(img, mask)
+
+        return img, mask, embedding_array, Organ_num, organ_ture, {'img_id': img_id}
